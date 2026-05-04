@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TEMPO — Time Management</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0a0a0f;--surface:#111118;--surface2:#1a1a24;--border:#2a2a3a;
+    --accent:#e8ff47;--accent2:#ff6b35;--accent3:#7b5ea7;
+    --text:#f0f0f5;--muted:#666680;--danger:#ff4444;--success:#44ff88;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;overflow-x:hidden;}
+  body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(232,255,71,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(232,255,71,0.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0;}
+
+  /* AUTH */
+  #authScreen{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;background:var(--bg);}
+  .auth-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:44px 40px;width:360px;animation:popIn 0.4s cubic-bezier(0.34,1.56,0.64,1);}
+  .auth-logo{font-size:34px;font-weight:800;color:var(--accent);letter-spacing:-2px;margin-bottom:4px;}
+  .auth-logo span{color:var(--text);}
+  .auth-sub{font-size:13px;color:var(--muted);margin-bottom:28px;}
+  .auth-tabs{display:flex;gap:4px;background:var(--surface2);border-radius:8px;padding:3px;margin-bottom:24px;}
+  .auth-tab{flex:1;padding:8px;text-align:center;font-size:13px;font-weight:700;cursor:pointer;border-radius:6px;border:none;background:transparent;color:var(--muted);font-family:'Syne',sans-serif;transition:all 0.15s;}
+  .auth-tab.active{background:var(--surface);color:var(--accent);border:1px solid var(--border);}
+  .auth-field{display:flex;flex-direction:column;gap:5px;margin-bottom:14px;}
+  .auth-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;}
+  .auth-input{background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:'Syne',sans-serif;font-size:14px;padding:11px 14px;border-radius:8px;outline:none;transition:border-color 0.2s;width:100%;}
+  .auth-input:focus{border-color:var(--accent);}
+  .auth-input::placeholder{color:var(--muted);}
+  .auth-btn{width:100%;padding:13px;background:var(--accent);color:#0a0a0f;border:none;border-radius:10px;font-family:'Syne',sans-serif;font-size:15px;font-weight:800;cursor:pointer;margin-top:6px;transition:all 0.15s;}
+  .auth-btn:hover{transform:translateY(-1px);box-shadow:0 6px 24px rgba(232,255,71,0.3);}
+  .auth-err{font-size:12px;color:var(--danger);margin-top:10px;text-align:center;min-height:18px;}
+
+  /* MAIN */
+  .app{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:24px 20px;}
+  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:36px;padding-bottom:20px;border-bottom:1px solid var(--border);}
+  .logo{font-size:28px;font-weight:800;letter-spacing:-1px;color:var(--accent);}
+  .logo span{color:var(--text);}
+  .header-right{display:flex;align-items:center;gap:12px;}
+  .user-pill{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:6px 14px;font-size:13px;font-weight:600;}
+  .sync-indicator{font-size:11px;font-family:'Space Mono',monospace;color:var(--muted);display:flex;align-items:center;gap:5px;}
+  .sync-dot{width:6px;height:6px;border-radius:50%;background:var(--success);}
+  .sync-dot.syncing{background:var(--accent2);animation:blink 0.8s infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.2}}
+  .btn-signout{background:transparent;border:1px solid var(--border);color:var(--muted);font-family:'Syne',sans-serif;font-size:12px;font-weight:700;padding:6px 12px;border-radius:8px;cursor:pointer;transition:all 0.15s;}
+  .btn-signout:hover{color:var(--danger);border-color:var(--danger);}
+
+  /* TABS */
+  .tabs{display:flex;gap:4px;margin-bottom:28px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:4px;}
+  .tab{flex:1;padding:10px 16px;background:transparent;border:none;color:var(--muted);font-family:'Syne',sans-serif;font-size:14px;font-weight:600;cursor:pointer;border-radius:7px;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:6px;}
+  .tab.active{background:var(--surface2);color:var(--accent);border:1px solid var(--border);}
+  .tab:hover:not(.active){color:var(--text);}
+  .panel{display:none;}.panel.active{display:block;}
+
+  /* TASKS */
+  .add-task-form{display:flex;gap:8px;flex:1;}
+  .tasks-header{display:flex;align-items:center;gap:12px;margin-bottom:20px;}
+  .input{background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:'Syne',sans-serif;font-size:14px;padding:10px 14px;border-radius:8px;outline:none;transition:border-color 0.2s;}
+  .input:focus{border-color:var(--accent);}
+  .input::placeholder{color:var(--muted);}
+  .input.grow{flex:1;}
+  select.input{cursor:pointer;}
+  .btn{padding:10px 18px;border:none;border-radius:8px;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:all 0.15s;white-space:nowrap;}
+  .btn-accent{background:var(--accent);color:#0a0a0f;}
+  .btn-accent:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(232,255,71,0.3);}
+  .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border);}
+  .btn-ghost:hover{color:var(--text);border-color:var(--text);}
+  .btn-danger{background:transparent;color:var(--danger);border:1px solid transparent;padding:6px 10px;font-size:16px;}
+  .btn-danger:hover{background:rgba(255,68,68,0.1);}
+  .task-filters{display:flex;gap:8px;margin-bottom:16px;}
+  .filter-btn{padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:'Syne',sans-serif;transition:all 0.15s;}
+  .filter-btn.active{background:var(--accent);color:#0a0a0f;border-color:var(--accent);}
+  .task-list{display:flex;flex-direction:column;gap:8px;}
+  .task-item{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;transition:all 0.2s;animation:slideIn 0.2s ease;}
+  @keyframes slideIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+  .task-item:hover{border-color:var(--accent3);}
+  .task-item.done{opacity:0.5;}
+  .task-item.done .task-name{text-decoration:line-through;color:var(--muted);}
+  .task-check{width:20px;height:20px;border:2px solid var(--border);border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.15s;font-size:11px;}
+  .task-check:hover{border-color:var(--accent);}
+  .task-item.done .task-check{background:var(--success);border-color:var(--success);color:#0a0a0f;}
+  .task-info{flex:1;min-width:0;}
+  .task-name{font-size:14px;font-weight:600;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .task-meta{display:flex;gap:8px;align-items:center;}
+  .tag{font-size:10px;font-weight:700;font-family:'Space Mono',monospace;padding:2px 8px;border-radius:4px;letter-spacing:0.5px;text-transform:uppercase;}
+  .tag-high{background:rgba(255,68,68,0.15);color:#ff6b6b;border:1px solid rgba(255,68,68,0.3);}
+  .tag-med{background:rgba(255,107,53,0.15);color:var(--accent2);border:1px solid rgba(255,107,53,0.3);}
+  .tag-low{background:rgba(123,94,167,0.15);color:#a48bd4;border:1px solid rgba(123,94,167,0.3);}
+  .task-est{font-size:11px;font-family:'Space Mono',monospace;color:var(--muted);}
+  .empty{text-align:center;padding:60px 20px;color:var(--muted);}
+  .empty-icon{font-size:40px;margin-bottom:12px;}
+  .empty p{font-size:14px;}
+  .stats-bar{display:flex;gap:16px;margin-bottom:20px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;}
+  .stat{display:flex;flex-direction:column;gap:2px;}
+  .stat-val{font-size:20px;font-weight:800;color:var(--accent);font-family:'Space Mono',monospace;}
+  .stat-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
+  .stat-divider{width:1px;background:var(--border);margin:0 4px;}
+  .progress-bar-wrap{flex:1;display:flex;flex-direction:column;justify-content:center;gap:4px;}
+  .progress-bar-track{height:6px;background:var(--border);border-radius:3px;overflow:hidden;}
+  .progress-bar-fill{height:100%;background:var(--accent);border-radius:3px;transition:width 0.4s ease;}
+  .progress-label{font-size:10px;color:var(--muted);text-align:right;font-family:'Space Mono',monospace;}
+
+  /* SCHEDULE */
+  .add-event-form{display:grid;grid-template-columns:1fr 80px 80px auto auto;gap:8px;margin-bottom:20px;align-items:end;}
+  .form-group{display:flex;flex-direction:column;gap:4px;}
+  .form-label{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;}
+  .schedule-scroll{height:520px;overflow-y:auto;border:1px solid var(--border);border-radius:10px;padding:10px;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+  .schedule-grid{display:grid;grid-template-columns:60px 1fr;}
+  .time-col{display:flex;flex-direction:column;}
+  .time-slot{height:60px;display:flex;align-items:flex-start;padding-top:4px;font-size:11px;font-family:'Space Mono',monospace;color:var(--muted);}
+  .events-col{position:relative;border-left:1px solid var(--border);}
+  .hour-line{position:absolute;left:0;right:0;border-top:1px solid var(--border);height:0;pointer-events:none;}
+  .now-line{position:absolute;left:0;right:0;border-top:2px solid var(--accent);z-index:5;pointer-events:none;}
+  .now-line::before{content:'';position:absolute;left:-5px;top:-5px;width:9px;height:9px;background:var(--accent);border-radius:50%;}
+  .event-block{position:absolute;left:8px;right:8px;background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--accent3);border-radius:6px;padding:6px 10px;font-size:12px;overflow:hidden;cursor:pointer;transition:all 0.15s;}
+  .event-block:hover{border-color:var(--accent);transform:translateX(2px);}
+  .event-title{font-weight:700;margin-bottom:2px;}
+  .event-time{font-family:'Space Mono',monospace;color:var(--muted);font-size:10px;}
+
+  /* SPRINT */
+  .score-bar{display:flex;gap:12px;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:20px;}
+  .score-item{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;font-family:'Space Mono',monospace;}
+  .score-icon{font-size:16px;}
+  .score-val{color:var(--accent);}
+  .score-spacer{flex:1;}
+  .sprint-setup{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px;}
+  .sprint-setup h3{font-size:13px;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-bottom:16px;}
+  .setup-row{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap;}
+  .duration-btns{display:flex;gap:6px;flex-wrap:wrap;}
+  .dur-btn{padding:7px 14px;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:'Syne',sans-serif;transition:all 0.15s;}
+  .dur-btn.active{background:rgba(232,255,71,0.1);color:var(--accent);border-color:var(--accent);}
+  .sprint-task-list{display:flex;flex-direction:column;gap:6px;}
+  .sprint-task-item{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:all 0.15s;}
+  .sprint-task-item.selected{border-color:var(--accent);background:rgba(232,255,71,0.05);}
+  .sprint-task-item:hover{border-color:var(--accent3);}
+  .sprint-check{width:18px;height:18px;border:2px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0;transition:all 0.15s;}
+  .sprint-task-item.selected .sprint-check{background:var(--accent);border-color:var(--accent);color:#0a0a0f;}
+  .sprint-hero{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px;margin-bottom:20px;text-align:center;position:relative;overflow:hidden;}
+  .sprint-hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(232,255,71,0.08) 0%,transparent 70%);pointer-events:none;}
+  .sprint-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:3px;color:var(--muted);margin-bottom:8px;}
+  .timer-ring-wrap{position:relative;width:160px;height:160px;margin:0 auto 20px;}
+  .timer-ring-wrap svg{transform:rotate(-90deg);}
+  .timer-ring-bg{fill:none;stroke:var(--border);stroke-width:6;}
+  .timer-ring-progress{fill:none;stroke:var(--accent);stroke-width:6;stroke-linecap:round;transition:stroke-dashoffset 1s linear,stroke 0.3s;}
+  .timer-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+  .time-big{font-family:'Space Mono',monospace;font-size:28px;font-weight:700;color:var(--accent);line-height:1;transition:color 0.3s;}
+  .time-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:4px;}
+  .sprint-controls{display:flex;gap:10px;justify-content:center;margin-bottom:20px;}
+  .btn-big{padding:12px 28px;font-size:16px;border-radius:10px;font-weight:800;}
+  .btn-start{background:var(--accent);color:#0a0a0f;border:none;}
+  .btn-start:hover{transform:scale(1.04);box-shadow:0 6px 24px rgba(232,255,71,0.4);}
+  .btn-stop{background:transparent;color:var(--danger);border:2px solid var(--danger);}
+  .btn-stop:hover{background:rgba(255,68,68,0.1);}
+  .btn-reset{background:transparent;color:var(--muted);border:2px solid var(--border);}
+  .btn-reset:hover{color:var(--text);border-color:var(--text);}
+  .active-sprint-tasks{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;}
+  .active-sprint-tasks h3{font-size:12px;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-bottom:12px;}
+  .active-task-row{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:7px;transition:background 0.15s;cursor:pointer;}
+  .active-task-row:hover{background:var(--surface2);}
+  .active-task-row.completed{opacity:0.5;}
+  .active-task-row.completed .active-task-name{text-decoration:line-through;color:var(--muted);}
+  .active-check{width:22px;height:22px;border:2px solid var(--border);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;transition:all 0.15s;}
+  .active-task-row.completed .active-check{background:var(--success);border-color:var(--success);color:#0a0a0f;}
+  .active-task-name{font-size:14px;font-weight:600;}
+
+  /* COMPLETION */
+  .completion-overlay{display:none;position:fixed;inset:0;background:rgba(10,10,15,0.9);z-index:100;align-items:center;justify-content:center;}
+  .completion-overlay.show{display:flex;}
+  .completion-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:40px;text-align:center;max-width:400px;width:90%;animation:popIn 0.4s cubic-bezier(0.34,1.56,0.64,1);}
+  @keyframes popIn{from{transform:scale(0.7);opacity:0}to{transform:scale(1);opacity:1}}
+  .completion-emoji{font-size:64px;margin-bottom:16px;}
+  .completion-title{font-size:28px;font-weight:800;margin-bottom:8px;}
+  .completion-sub{font-size:14px;color:var(--muted);margin-bottom:24px;}
+  .completion-stats{display:flex;gap:24px;justify-content:center;margin-bottom:24px;}
+  .comp-stat{display:flex;flex-direction:column;gap:4px;}
+  .comp-stat-val{font-size:28px;font-weight:800;font-family:'Space Mono',monospace;color:var(--accent);}
+  .comp-stat-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
+  ::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+</style>
+</head>
+<body>
+
+<!-- AUTH SCREEN -->
+<div id="authScreen">
+  <div class="auth-card">
+    <div class="auth-logo">TEMPO<span>.</span></div>
+    <div class="auth-sub">Your time, your game. Sign in to sync everywhere.</div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="showAuthTab('login')">Sign In</button>
+      <button class="auth-tab" onclick="showAuthTab('signup')">Sign Up</button>
+    </div>
+    <div id="authForm">
+      <div class="auth-field">
+        <label class="auth-label">Email</label>
+        <input class="auth-input" type="email" id="authEmail" placeholder="you@email.com" autocomplete="email">
+      </div>
+      <div class="auth-field">
+        <label class="auth-label">Password</label>
+        <input class="auth-input" type="password" id="authPassword" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <div class="auth-field" id="confirmField" style="display:none">
+        <label class="auth-label">Confirm Password</label>
+        <input class="auth-input" type="password" id="authConfirm" placeholder="••••••••">
+      </div>
+      <button class="auth-btn" id="authSubmitBtn" onclick="handleAuth()">Sign In</button>
+      <div class="auth-err" id="authErr"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div class="app" id="mainApp" style="display:none">
+  <header>
+    <div class="logo">TEMPO<span>.</span></div>
+    <div class="header-right">
+      <div class="sync-indicator"><div class="sync-dot" id="syncDot"></div><span id="syncLabel">synced</span></div>
+      <div class="user-pill" id="userPill">👤 <span id="userName"></span></div>
+      <button class="btn-signout" onclick="doSignOut()">Sign out</button>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('tasks')">📋 Tasks</button>
+    <button class="tab" onclick="switchTab('schedule')">📅 Schedule</button>
+    <button class="tab" onclick="switchTab('sprint')">⚡ Sprint</button>
+  </div>
+
+  <!-- TASKS -->
+  <div class="panel active" id="panel-tasks">
+    <div class="tasks-header">
+      <form class="add-task-form" onsubmit="addTask(event)">
+        <input class="input grow" id="taskInput" placeholder="Add a task..." autocomplete="off">
+        <input class="input" id="taskEst" type="number" placeholder="min" min="1" max="999" style="width:70px">
+        <select class="input" id="taskPriority" style="width:100px">
+          <option value="low">Low</option>
+          <option value="med" selected>Medium</option>
+          <option value="high">High</option>
+        </select>
+        <button class="btn btn-accent" type="submit">+ Add</button>
+      </form>
+    </div>
+    <div class="stats-bar">
+      <div class="stat"><div class="stat-val" id="statTotal">0</div><div class="stat-label">Total</div></div>
+      <div class="stat-divider"></div>
+      <div class="stat"><div class="stat-val" id="statDone">0</div><div class="stat-label">Done</div></div>
+      <div class="stat-divider"></div>
+      <div class="stat"><div class="stat-val" id="statEst">0m</div><div class="stat-label">Est. left</div></div>
+      <div class="stat-divider"></div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-track"><div class="progress-bar-fill" id="progressFill" style="width:0%"></div></div>
+        <div class="progress-label" id="progressLabel">0%</div>
+      </div>
+    </div>
+    <div class="task-filters">
+      <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
+      <button class="filter-btn" onclick="setFilter('active',this)">Active</button>
+      <button class="filter-btn" onclick="setFilter('done',this)">Done</button>
+      <button class="filter-btn" onclick="setFilter('high',this)">🔴 High</button>
+    </div>
+    <div class="task-list" id="taskList">
+      <div class="empty" id="taskEmpty"><div class="empty-icon">📋</div><p>No tasks yet. Add one above!</p></div>
+    </div>
+  </div>
+
+  <!-- SCHEDULE -->
+  <div class="panel" id="panel-schedule">
+    <div class="add-event-form">
+      <div class="form-group"><label class="form-label">Event name</label><input class="input" id="evTitle" placeholder="e.g. Study session"></div>
+      <div class="form-group"><label class="form-label">Start</label><input class="input" type="time" id="evStart" value="09:00"></div>
+      <div class="form-group"><label class="form-label">End</label><input class="input" type="time" id="evEnd" value="10:00"></div>
+      <div class="form-group"><label class="form-label">&nbsp;</label><button class="btn btn-accent" onclick="addEvent()">+ Add</button></div>
+      <div class="form-group"><label class="form-label">&nbsp;</label><button class="btn btn-ghost" onclick="clearEvents()">Clear</button></div>
+    </div>
+    <div class="schedule-scroll" id="scheduleScroll">
+      <div class="schedule-grid">
+        <div class="time-col" id="timeCol"></div>
+        <div class="events-col" id="eventsCol"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SPRINT -->
+  <div class="panel" id="panel-sprint">
+    <div class="score-bar">
+      <div class="score-item"><span class="score-icon">⚡</span><span>Sprints:</span><span class="score-val" id="scoreVal">0</span></div>
+      <div class="score-spacer"></div>
+      <div class="score-item"><span class="score-icon">🔥</span><span>Streak:</span><span class="score-val" id="streakVal">0</span></div>
+    </div>
+    <div id="sprintSetupPanel">
+      <div class="sprint-setup">
+        <h3>⏱ Set Sprint Duration</h3>
+        <div class="setup-row">
+          <div class="duration-btns">
+            <button class="dur-btn" onclick="setDuration(5,this)">5 min</button>
+            <button class="dur-btn active" onclick="setDuration(15,this)">15 min</button>
+            <button class="dur-btn" onclick="setDuration(25,this)">25 min</button>
+            <button class="dur-btn" onclick="setDuration(45,this)">45 min</button>
+            <button class="dur-btn" onclick="setDuration(60,this)">1 hr</button>
+          </div>
+          <input class="input" type="number" id="customDur" placeholder="custom min" min="1" max="300" style="width:110px" oninput="setCustomDuration(this)">
+        </div>
+      </div>
+      <div class="sprint-setup">
+        <h3>📋 Select Tasks for this Sprint</h3>
+        <div class="sprint-task-list" id="sprintTaskPicker"></div>
+      </div>
+      <div style="text-align:center;margin-top:20px">
+        <button class="btn btn-big btn-start" onclick="startSprint()">▶ START SPRINT</button>
+      </div>
+    </div>
+    <div id="sprintActivePanel" style="display:none">
+      <div class="sprint-hero">
+        <div class="sprint-title">Sprint in progress</div>
+        <div class="timer-ring-wrap">
+          <svg width="160" height="160" viewBox="0 0 160 160">
+            <circle class="timer-ring-bg" cx="80" cy="80" r="70"/>
+            <circle class="timer-ring-progress" id="timerRing" cx="80" cy="80" r="70" stroke-dasharray="439.82" stroke-dashoffset="0"/>
+          </svg>
+          <div class="timer-center">
+            <div class="time-big" id="timerBig">15:00</div>
+            <div class="time-label">remaining</div>
+          </div>
+        </div>
+        <div class="sprint-controls">
+          <button class="btn btn-big btn-reset" onclick="pauseSprint()" id="pauseBtn">⏸ Pause</button>
+          <button class="btn btn-big btn-stop" onclick="abandonSprint()">✕ Quit</button>
+        </div>
+        <div id="sprintStatusMsg" style="font-size:13px;color:var(--muted)">Complete all tasks before time runs out!</div>
+      </div>
+      <div class="active-sprint-tasks">
+        <h3>🎯 Tasks to Complete</h3>
+        <div id="activeTaskList"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- COMPLETION -->
+<div class="completion-overlay" id="completionOverlay">
+  <div class="completion-card">
+    <div class="completion-emoji" id="compEmoji">🎉</div>
+    <div class="completion-title" id="compTitle">Sprint Complete!</div>
+    <div class="completion-sub" id="compSub">You crushed it.</div>
+    <div class="completion-stats">
+      <div class="comp-stat"><div class="comp-stat-val" id="compTasks">0</div><div class="comp-stat-label">Tasks Done</div></div>
+      <div class="comp-stat"><div class="comp-stat-val" id="compTime">0:00</div><div class="comp-stat-label">Time Used</div></div>
+    </div>
+    <button class="btn btn-accent btn-big" onclick="closeCompletion()">Continue →</button>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import {
+  getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+  onAuthStateChanged, signOut as fbSignOut
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import {
+  getFirestore, doc, collection, onSnapshot,
+  setDoc, deleteDoc, updateDoc
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBNhUKy1-SR10m3xcM4x98BIzeEHbYE9qI",
+  authDomain: "tempo-3df7a.firebaseapp.com",
+  projectId: "tempo-3df7a",
+  storageBucket: "tempo-3df7a.firebasestorage.app",
+  messagingSenderId: "802106860062",
+  appId: "1:802106860062:web:a71c37e4bf16915260440f"
+};
+
+const fbApp = initializeApp(firebaseConfig);
+const auth = getAuth(fbApp);
+const db = getFirestore(fbApp);
+
+let currentUser = null;
+let tasks = [], events = [];
+let taskFilter = 'all';
+let unsubTasks, unsubEvents, unsubMeta;
+let authMode = 'login';
+
+// Sprint state
+let sprintDuration = 15*60, sprintTimeLeft = 15*60;
+let sprintInterval = null, sprintRunning = false, sprintPaused = false, sprintElapsed = 0;
+let sprintTasks = [], score = 0, streak = 0;
+
+// Helpers
+const genId = () => Math.random().toString(36).slice(2,10);
+const formatTime = s => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+const setSyncing = on => {
+  document.getElementById('syncDot').className = 'sync-dot'+(on?' syncing':'');
+  document.getElementById('syncLabel').textContent = on ? 'syncing…' : 'synced';
+};
+const uid = () => currentUser.uid;
+const tasksCol = () => collection(db,'users',uid(),'tasks');
+const eventsCol = () => collection(db,'users',uid(),'events');
+const metaDoc = () => doc(db,'users',uid(),'meta','sprint');
+
+// ---- AUTH UI ----
+window.showAuthTab = mode => {
+  authMode = mode;
+  document.querySelectorAll('.auth-tab').forEach((t,i) => t.classList.toggle('active', (i===0&&mode==='login')||(i===1&&mode==='signup')));
+  document.getElementById('confirmField').style.display = mode==='signup' ? '' : 'none';
+  document.getElementById('authSubmitBtn').textContent = mode==='signup' ? 'Create Account' : 'Sign In';
+  document.getElementById('authErr').textContent = '';
+  document.getElementById('authPassword').autocomplete = mode==='signup' ? 'new-password' : 'current-password';
+};
+
+window.handleAuth = async () => {
+  const email = document.getElementById('authEmail').value.trim();
+  const pass = document.getElementById('authPassword').value;
+  const confirm = document.getElementById('authConfirm').value;
+  const errEl = document.getElementById('authErr');
+  errEl.textContent = '';
+
+  if (!email || !pass) { errEl.textContent = 'Please fill in all fields.'; return; }
+  if (authMode === 'signup' && pass !== confirm) { errEl.textContent = 'Passwords do not match.'; return; }
+  if (pass.length < 6) { errEl.textContent = 'Password must be at least 6 characters.'; return; }
+
+  document.getElementById('authSubmitBtn').textContent = '…';
+  try {
+    if (authMode === 'signup') {
+      await createUserWithEmailAndPassword(auth, email, pass);
+    } else {
+      await signInWithEmailAndPassword(auth, email, pass);
+    }
+  } catch(e) {
+    const msgs = {
+      'auth/email-already-in-use': 'That email is already registered. Try signing in.',
+      'auth/user-not-found': 'No account with that email. Try signing up.',
+      'auth/wrong-password': 'Wrong password. Try again.',
+      'auth/invalid-email': 'Please enter a valid email address.',
+      'auth/invalid-credential': 'Wrong email or password.',
+      'auth/too-many-requests': 'Too many attempts. Try again later.'
+    };
+    errEl.textContent = msgs[e.code] || 'Something went wrong. Try again.';
+    document.getElementById('authSubmitBtn').textContent = authMode==='signup' ? 'Create Account' : 'Sign In';
+  }
+};
+
+window.doSignOut = async () => {
+  if(unsubTasks) unsubTasks();
+  if(unsubEvents) unsubEvents();
+  if(unsubMeta) unsubMeta();
+  tasks=[]; events=[];
+  await fbSignOut(auth);
+};
+
+// Enter key on auth fields
+document.getElementById('authPassword').addEventListener('keydown', e => { if(e.key==='Enter') handleAuth(); });
+document.getElementById('authEmail').addEventListener('keydown', e => { if(e.key==='Enter') handleAuth(); });
+
+// ---- AUTH STATE ----
+onAuthStateChanged(auth, user => {
+  currentUser = user;
+  if (user) {
+    document.getElementById('authScreen').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'block';
+    document.getElementById('userName').textContent = user.email.split('@')[0];
+    subscribeData();
+  } else {
+    document.getElementById('authScreen').style.display = 'flex';
+    document.getElementById('mainApp').style.display = 'none';
+    document.getElementById('authSubmitBtn').textContent = 'Sign In';
+    document.getElementById('authErr').textContent = '';
+  }
+});
+
+// ---- FIRESTORE ----
+function subscribeData() {
+  unsubTasks = onSnapshot(tasksCol(), snap => {
+    tasks = snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderTasks(); renderSprintPicker();
+  });
+  unsubEvents = onSnapshot(eventsCol(), snap => {
+    events = snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderSchedule();
+  });
+  unsubMeta = onSnapshot(metaDoc(), snap => {
+    if(snap.exists()) {
+      score=snap.data().score||0; streak=snap.data().streak||0;
+      document.getElementById('scoreVal').textContent=score;
+      document.getElementById('streakVal').textContent=streak;
+    }
+  });
+}
+
+// ---- TASKS ----
+window.addTask = async e => {
+  e.preventDefault();
+  const name=document.getElementById('taskInput').value.trim(); if(!name)return;
+  const est=parseInt(document.getElementById('taskEst').value)||0;
+  const priority=document.getElementById('taskPriority').value;
+  setSyncing(true);
+  await setDoc(doc(tasksCol(),genId()),{name,est,priority,done:false,created:Date.now()});
+  setSyncing(false);
+  document.getElementById('taskInput').value='';
+  document.getElementById('taskEst').value='';
+};
+window.toggleTask = async id => {
+  const t=tasks.find(t=>t.id===id); if(!t)return;
+  setSyncing(true); await updateDoc(doc(tasksCol(),id),{done:!t.done}); setSyncing(false);
+};
+window.deleteTask = async id => {
+  setSyncing(true); await deleteDoc(doc(tasksCol(),id)); setSyncing(false);
+};
+window.setFilter = (f,btn) => {
+  taskFilter=f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); renderTasks();
+};
+function renderTasks() {
+  let f=[...tasks];
+  if(taskFilter==='active') f=f.filter(t=>!t.done);
+  else if(taskFilter==='done') f=f.filter(t=>t.done);
+  else if(taskFilter==='high') f=f.filter(t=>t.priority==='high');
+  f.sort((a,b)=>{if(a.done!==b.done)return a.done?1:-1;return ({high:0,med:1,low:2}[a.priority])-({high:0,med:1,low:2}[b.priority]);});
+  const list=document.getElementById('taskList'),empty=document.getElementById('taskEmpty');
+  list.innerHTML='';
+  if(!f.length){list.appendChild(empty);empty.style.display='';}
+  else{
+    empty.style.display='none';
+    f.forEach(t=>{
+      const el=document.createElement('div');
+      el.className='task-item'+(t.done?' done':'');
+      el.innerHTML=`<div class="task-check" onclick="toggleTask('${t.id}')">${t.done?'✓':''}</div><div class="task-info"><div class="task-name">${t.name}</div><div class="task-meta"><span class="tag tag-${t.priority}">${t.priority}</span>${t.est?`<span class="task-est">${t.est}m</span>`:''}</div></div><button class="btn btn-danger" onclick="deleteTask('${t.id}')">✕</button>`;
+      list.appendChild(el);
+    });
+  }
+  const total=tasks.length,done=tasks.filter(t=>t.done).length,estLeft=tasks.filter(t=>!t.done).reduce((s,t)=>s+t.est,0),pct=total?Math.round(done/total*100):0;
+  document.getElementById('statTotal').textContent=total;
+  document.getElementById('statDone').textContent=done;
+  document.getElementById('statEst').textContent=estLeft?estLeft+'m':'0m';
+  document.getElementById('progressFill').style.width=pct+'%';
+  document.getElementById('progressLabel').textContent=pct+'%';
+}
+
+// ---- SCHEDULE ----
+const SS=7,SE=21,SH=60;
+function renderSchedule(){
+  const tc=document.getElementById('timeCol'),ec=document.getElementById('eventsCol');
+  tc.innerHTML='';ec.innerHTML='';
+  ec.style.minHeight=((SE-SS)*SH)+'px';
+  for(let h=SS;h<=SE;h++){
+    const s=document.createElement('div');s.className='time-slot';s.textContent=`${h%12||12}${h<12?'am':'pm'}`;tc.appendChild(s);
+    const l=document.createElement('div');l.className='hour-line';l.style.top=((h-SS)*SH)+'px';ec.appendChild(l);
+  }
+  const now=new Date(),nowH=now.getHours()+now.getMinutes()/60;
+  if(nowH>=SS&&nowH<=SE){const nl=document.createElement('div');nl.className='now-line';nl.style.top=((nowH-SS)*SH)+'px';ec.appendChild(nl);}
+  events.forEach(ev=>{
+    const[sh,sm]=ev.start.split(':').map(Number),[eh,em]=ev.end.split(':').map(Number);
+    const sf=sh+sm/60,ef=eh+em/60;if(ef<=SS||sf>=SE)return;
+    const top=(Math.max(sf,SS)-SS)*SH,height=(Math.min(ef,SE)-Math.max(sf,SS))*SH;
+    const b=document.createElement('div');b.className='event-block';
+    b.style.cssText=`top:${top}px;height:${Math.max(height-4,20)}px;`;
+    b.innerHTML=`<div class="event-title">${ev.title}</div><div class="event-time">${ev.start} – ${ev.end}</div>`;
+    b.onclick=()=>{if(confirm(`Delete "${ev.title}"?`)){setSyncing(true);deleteDoc(doc(eventsCol(),ev.id)).then(()=>setSyncing(false));}};
+    ec.appendChild(b);
+  });
+  document.getElementById('scheduleScroll').scrollTop=Math.max((nowH-SS)*SH-100,0);
+}
+window.addEvent = async()=>{
+  const title=document.getElementById('evTitle').value.trim(),start=document.getElementById('evStart').value,end=document.getElementById('evEnd').value;
+  if(!title||!start||!end)return alert('Fill in all fields.');
+  if(start>=end)return alert('End must be after start.');
+  setSyncing(true);await setDoc(doc(eventsCol(),genId()),{title,start,end});setSyncing(false);
+  document.getElementById('evTitle').value='';
+};
+window.clearEvents=async()=>{
+  if(!confirm('Clear all events?'))return;
+  setSyncing(true);await Promise.all(events.map(ev=>deleteDoc(doc(eventsCol(),ev.id))));setSyncing(false);
+};
+
+// ---- SPRINT ----
+window.setDuration=(min,btn)=>{sprintDuration=min*60;document.querySelectorAll('.dur-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');document.getElementById('customDur').value='';};
+window.setCustomDuration=input=>{const v=parseInt(input.value);if(v>0){sprintDuration=v*60;document.querySelectorAll('.dur-btn').forEach(b=>b.classList.remove('active'));}};
+window.renderSprintPicker=()=>{
+  const picker=document.getElementById('sprintTaskPicker'),pending=tasks.filter(t=>!t.done);
+  if(!pending.length){picker.innerHTML=`<div class="empty" style="padding:20px"><div class="empty-icon">📋</div><p>No pending tasks! Add some in the Tasks tab.</p></div>`;return;}
+  picker.innerHTML='';
+  pending.forEach(t=>{
+    const sel=sprintTasks.find(s=>s.id===t.id),el=document.createElement('div');
+    el.className='sprint-task-item'+(sel?' selected':'');
+    el.innerHTML=`<div class="sprint-check">${sel?'✓':''}</div><div style="flex:1"><div style="font-size:14px;font-weight:600">${t.name}</div><div style="font-size:11px;color:var(--muted)">${t.priority}${t.est?' · '+t.est+'m':''}</div></div>`;
+    el.onclick=()=>{const i=sprintTasks.findIndex(s=>s.id===t.id);if(i>=0)sprintTasks.splice(i,1);else sprintTasks.push({id:t.id,completed:false});renderSprintPicker();};
+    picker.appendChild(el);
+  });
+};
+window.startSprint=()=>{
+  if(!sprintTasks.length)return alert('Select at least one task!');
+  sprintTimeLeft=sprintDuration;sprintRunning=true;sprintPaused=false;sprintElapsed=0;
+  sprintTasks.forEach(t=>t.completed=false);
+  document.getElementById('sprintSetupPanel').style.display='none';
+  document.getElementById('sprintActivePanel').style.display='block';
+  renderActiveTaskList();updateTimerDisplay();updateRing();
+  document.getElementById('pauseBtn').textContent='⏸ Pause';
+  sprintInterval=setInterval(()=>{
+    if(!sprintPaused){sprintTimeLeft--;sprintElapsed++;updateTimerDisplay();updateRing();
+      if(sprintTimeLeft<=0){clearInterval(sprintInterval);endSprint(false);}}
+  },1000);
+};
+window.pauseSprint=()=>{sprintPaused=!sprintPaused;document.getElementById('pauseBtn').textContent=sprintPaused?'▶ Resume':'⏸ Pause';document.getElementById('sprintStatusMsg').textContent=sprintPaused?'Paused.':'Complete all tasks before time runs out!';};
+window.abandonSprint=()=>{if(!confirm('Quit this sprint?'))return;clearInterval(sprintInterval);streak=0;saveMeta();document.getElementById('streakVal').textContent=streak;resetSprintUI();};
+function updateTimerDisplay(){
+  const el=document.getElementById('timerBig'),pct=sprintTimeLeft/sprintDuration;
+  el.textContent=formatTime(sprintTimeLeft);el.style.color=pct<=0.1?'var(--danger)':pct<=0.25?'var(--accent2)':'var(--accent)';
+  if(!sprintPaused)document.getElementById('sprintStatusMsg').textContent=pct<=0.1?'⚠️ Almost out of time!':pct<=0.25?'⏳ Hurry up!':'Complete all tasks before time runs out!';
+}
+function updateRing(){const pct=sprintTimeLeft/sprintDuration,ring=document.getElementById('timerRing');ring.style.strokeDashoffset=(439.82*(1-pct));ring.style.stroke=pct<=0.1?'var(--danger)':pct<=0.25?'var(--accent2)':'var(--accent)';}
+function renderActiveTaskList(){
+  const list=document.getElementById('activeTaskList');list.innerHTML='';
+  sprintTasks.forEach(st=>{
+    const task=tasks.find(t=>t.id===st.id);if(!task)return;
+    const el=document.createElement('div');el.className='active-task-row'+(st.completed?' completed':'');
+    el.innerHTML=`<div class="active-check">${st.completed?'✓':''}</div><div class="active-task-name">${task.name}</div>${task.est?`<div style="font-size:11px;color:var(--muted);margin-left:auto;font-family:'Space Mono',monospace">${task.est}m</div>`:''}`;
+    el.onclick=async()=>{st.completed=!st.completed;if(st.completed){setSyncing(true);await updateDoc(doc(tasksCol(),task.id),{done:true});setSyncing(false);}renderActiveTaskList();if(sprintTasks.every(s=>s.completed)){clearInterval(sprintInterval);endSprint(true);}};
+    list.appendChild(el);
+  });
+}
+async function saveMeta(){setSyncing(true);await setDoc(metaDoc(),{score,streak});setSyncing(false);}
+async function endSprint(success){
+  sprintRunning=false;const done=sprintTasks.filter(s=>s.completed).length,used=sprintDuration-sprintTimeLeft;
+  if(success){score++;streak++;}else{streak=0;}
+  await saveMeta();
+  document.getElementById('compEmoji').textContent=success&&streak>=3?'🔥':success?'🎉':done===sprintTasks.length?'🎉':'⏰';
+  document.getElementById('compTitle').textContent=success&&streak>=3?`${streak} Sprint Streak!`:success?'Sprint Complete!':'Time\'s Up!';
+  document.getElementById('compSub').textContent=success&&streak>=3?'You\'re on fire!':success?'All tasks done before the clock!':done<sprintTasks.length?`${sprintTasks.length-done} task(s) remaining.`:'All done!';
+  document.getElementById('compTasks').textContent=done+'/'+sprintTasks.length;
+  document.getElementById('compTime').textContent=formatTime(used);
+  document.getElementById('scoreVal').textContent=score;
+  document.getElementById('streakVal').textContent=streak;
+  document.getElementById('completionOverlay').classList.add('show');
+}
+window.closeCompletion=()=>{document.getElementById('completionOverlay').classList.remove('show');resetSprintUI();};
+function resetSprintUI(){sprintRunning=false;sprintPaused=false;sprintTasks=sprintTasks.filter(s=>!s.completed);document.getElementById('sprintActivePanel').style.display='none';document.getElementById('sprintSetupPanel').style.display='block';renderSprintPicker();}
+
+// ---- TABS ----
+window.switchTab=name=>{
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('panel-'+name).classList.add('active');
+  document.querySelectorAll('.tab')[['tasks','schedule','sprint'].indexOf(name)].classList.add('active');
+  if(name==='sprint')renderSprintPicker();
+  if(name==='schedule')renderSchedule();
+};
+
+renderSchedule();
+</script>
+</body>
+</html>
